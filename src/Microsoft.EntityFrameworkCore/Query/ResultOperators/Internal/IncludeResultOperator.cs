@@ -28,27 +28,39 @@ namespace Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public IncludeResultOperator([NotNull] MemberExpression navigationPropertyPath)
+        public IncludeResultOperator([NotNull] MemberExpression navigationPropertyPath, [NotNull] Expression pathFromQuerySource)
         {
             NavigationPropertyPath = navigationPropertyPath;
-            QuerySource = GetQuerySource(navigationPropertyPath);
+            PathFromQuerySource = pathFromQuerySource;
+            QuerySource = GetQuerySource(pathFromQuerySource);
         }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
-        public IncludeResultOperator([NotNull] string navigationPropertyPath)
+        public IncludeResultOperator([NotNull] string navigationPropertyPath, [NotNull] Expression pathFromQuerySource)
         {
             StringNavigationPropertyPath = navigationPropertyPath;
+            PathFromQuerySource = pathFromQuerySource;
+            QuerySource = GetQuerySource(pathFromQuerySource);
         }
 
-        private static IQuerySource GetQuerySource(MemberExpression expression)
+        private static IQuerySource GetQuerySource(Expression expression)
         {
-            var expressionWithoutConvert = expression.Expression.RemoveConvert();
+            var querySourceReferenceExpression = expression as QuerySourceReferenceExpression;
+            if (querySourceReferenceExpression != null)
+            {
+                return querySourceReferenceExpression.ReferencedQuerySource;
+            }
 
-            return (expressionWithoutConvert as QuerySourceReferenceExpression)?.ReferencedQuerySource
-                   ?? GetQuerySource((MemberExpression)expressionWithoutConvert);
+            var memberExpression = expression as MemberExpression;
+            if (memberExpression != null)
+            {
+                return GetQuerySource(memberExpression.Expression.RemoveConvert());
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -74,6 +86,12 @@ namespace Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         public virtual string StringNavigationPropertyPath { get; }
+
+        /// <summary>
+        ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
+        ///     directly from your code. This API may change or be removed in future releases.
+        /// </summary>
+        public virtual Expression PathFromQuerySource { get; [param: NotNull] set; }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used
@@ -114,8 +132,8 @@ namespace Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal
         /// </summary>
         public override ResultOperatorBase Clone(CloneContext cloneContext)
             => StringNavigationPropertyPath != null
-                ? new IncludeResultOperator(StringNavigationPropertyPath)
-                : new IncludeResultOperator(NavigationPropertyPath)
+                ? new IncludeResultOperator(StringNavigationPropertyPath, PathFromQuerySource)
+                : new IncludeResultOperator(NavigationPropertyPath, PathFromQuerySource)
                 {
                     _chainedNavigationProperties = _chainedNavigationProperties
                 };

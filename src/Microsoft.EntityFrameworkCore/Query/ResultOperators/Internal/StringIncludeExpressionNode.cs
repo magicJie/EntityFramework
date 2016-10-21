@@ -44,7 +44,12 @@ namespace Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal
         ///     directly from your code. This API may change or be removed in future releases.
         /// </summary>
         protected override ResultOperatorBase CreateResultOperator(ClauseGenerationContext clauseGenerationContext)
-            => new IncludeResultOperator((string)_navigationPropertyPath.Value);
+        {
+            var prm = Expression.Parameter(typeof(object));
+            var pathFromQuerySource = Resolve(prm, prm, clauseGenerationContext);
+
+            return new IncludeResultOperator((string)_navigationPropertyPath.Value, pathFromQuerySource);
+        }
 
         /// <summary>
         ///     This API supports the Entity Framework Core infrastructure and is not intended to be used

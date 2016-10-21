@@ -47,11 +47,9 @@ namespace Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal
         /// </summary>
         protected override ResultOperatorBase CreateResultOperator(ClauseGenerationContext clauseGenerationContext)
         {
-            var navigationPropertyPath
-                = Source.Resolve(
-                    _navigationPropertyPathLambda.Parameters[0],
-                    _navigationPropertyPathLambda.Body,
-                    clauseGenerationContext) as MemberExpression;
+            var prm = Expression.Parameter(typeof(object));
+            var pathFromQuerySource = Resolve(prm, prm, clauseGenerationContext);
+            var navigationPropertyPath = _navigationPropertyPathLambda.Body as MemberExpression;
 
             if (navigationPropertyPath == null)
             {
@@ -59,7 +57,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal
                     CoreStrings.InvalidComplexPropertyExpression(_navigationPropertyPathLambda));
             }
 
-            var includeResultOperator = new IncludeResultOperator(navigationPropertyPath);
+            var includeResultOperator = new IncludeResultOperator(navigationPropertyPath, pathFromQuerySource);
 
             clauseGenerationContext.AddContextInfo(this, includeResultOperator);
 
